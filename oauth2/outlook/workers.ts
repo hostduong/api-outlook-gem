@@ -71,21 +71,29 @@ function convertVietnamTimeToDate(vnTime: string): Date {
 
 
 
-// ✅ Hàm 1: Lưu email vào KV_CACHE
+// ✅ Hàm Lưu email vào KV_OUTLOOK
 export async function luu_Email_KV_OUTLOOK(apiKey: string, email: string, dataMoi: any, env: any): Promise<void> {
-  // Không ghi nếu thiếu email hoặc pass!
-  if (!email || !dataMoi?.pass) return;
+  // Validate
+  if (!apiKey || !email || !dataMoi?.pass) return;
 
-  const keyData = `user:${apiKey}:${email.toLowerCase()}`;
+  // Lấy email_user từ KV_USER
+  const userDataStr = await env.KV_USER.get(`api_key:${apiKey}`);
+  if (!userDataStr) return; // Không tìm thấy api_key => không ghi
+  let userData;
+  try { userData = JSON.parse(userDataStr); } catch { return; }
+  const emailUser = userData.email;
+  if (!emailUser) return; // Không có email_user => không ghi
+
+  // Đúng format key
+  const keyData = `user:${emailUser}:${email.toLowerCase()}`;
   const keyIndex = `index:${email.toLowerCase()}`;
   const emailLC = email.toLowerCase();
-
-  const dataCuStr = await env.KV_OUTLOOK.get(keyData);
   const thoiGian = getTimeVietnam();
 
-  // Nếu chưa có key → ghi mới toàn bộ (yêu cầu refresh_token có giá trị)
+  // Nếu chưa có key => chỉ ghi nếu status === "success"
+  const dataCuStr = await env.KV_OUTLOOK.get(keyData);
   if (!dataCuStr) {
-    if (!dataMoi.refresh_token) return; // Không ghi nếu không có refresh_token
+    if (!dataMoi.refresh_token || dataMoi.status !== "success") return;
     await Promise.all([
       env.KV_OUTLOOK.put(keyData, JSON.stringify({
         pass: dataMoi.pass || "",
@@ -95,12 +103,12 @@ export async function luu_Email_KV_OUTLOOK(apiKey: string, email: string, dataMo
         status_token: "Live",
         time_token: thoiGian
       })),
-      env.KV_INDEX_OUTLOOK.put(keyIndex, `user:${apiKey}`)
+      env.KV_INDEX_OUTLOOK.put(keyIndex, `user:${emailUser}`)
     ]);
     return;
   }
 
-  // Nếu đã có key → so sánh và cập nhật từng trường nếu thay đổi
+  // Nếu đã có key => cập nhật như trước
   const dataCu = JSON.parse(dataCuStr);
   let coThayDoi = false;
   const dataCapNhat = { ...dataCu };
@@ -129,9 +137,10 @@ export async function luu_Email_KV_OUTLOOK(apiKey: string, email: string, dataMo
 
   await Promise.all([
     env.KV_OUTLOOK.put(keyData, JSON.stringify(dataCapNhat)),
-    env.KV_INDEX_OUTLOOK.put(keyIndex, `user:${apiKey}`)
+    env.KV_INDEX_OUTLOOK.put(keyIndex, `user:${emailUser}`)
   ]);
 }
+
 
 
 
