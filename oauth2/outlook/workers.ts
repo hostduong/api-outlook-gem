@@ -196,7 +196,7 @@ export async function xuLy_Token_Outlook(thamSo: any, env: any, ctx: ExecutionCo
         access_token: "",
         client_id: idClient,
         time_token: thoiGian,
-        status_token: thongBao.status === "lock" ? "lock" : "Live"
+        status_token: thongBao.status
       }, env));
     }
 
