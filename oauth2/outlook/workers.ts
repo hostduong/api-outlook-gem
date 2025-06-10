@@ -12,7 +12,7 @@ export default {
     const apiKey = body.api_key;
     if (!apiKey) return new Response("", { status: 204 });
 
-    const keyCheck = await env.KV_CACHE.get(`outlook/api_key:${apiKey}`);
+    const keyCheck = await env.KV_USER.get(`api_key:${apiKey}`);
     if (!keyCheck) return new Response("", { status: 204 });
 
     if (path.endsWith("/refresh")) return xuLy_Token_Outlook(body, env, ctx);
