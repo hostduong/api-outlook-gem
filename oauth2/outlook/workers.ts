@@ -31,20 +31,20 @@ export default {
 export async function scheduled(controller, env, ctx) {
   const now = getTimeVietnam();
   const currentTime = convertVietnamTimeToDate(now);
-  const keys = await env.KV_CACHE.list({ prefix: "outlook/api_key:" });
+  const keys = await env.KV_USER.list({ prefix: "api_key:" });
 
   await Promise.all(keys.keys.map(async (key) => {
-    const expiryTimeStr = await env.KV_CACHE.get(key.name);
+    const expiryTimeStr = await env.KV_USER.get(key.name);
     if (!expiryTimeStr) return;
     let expiryTime;
     try { expiryTime = convertVietnamTimeToDate(expiryTimeStr); }
     catch { return; }
     if (expiryTime <= currentTime) {
-      const expiredKey = key.name.replace("outlook/api_key:", "outlook/expired/api_key:");
-      const value = await env.KV_CACHE.get(key.name);
+      const expiredKey = key.name.replace("api_key:", "expired/api_key:");
+      const value = await env.KV_USER.get(key.name);
       await Promise.all([
-        env.KV_CACHE.put(expiredKey, value),
-        env.KV_CACHE.delete(key.name)
+        env.KV_USER.put(expiredKey, value),
+        env.KV_USER.delete(key.name)
       ]);
     }
   }));
