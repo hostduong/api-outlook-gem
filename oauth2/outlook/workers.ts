@@ -566,8 +566,9 @@ export function dich_Loi_Microsoft(data: any): { status: "success" | "lock" | "f
 
   if (!raw) return { status: "fail", messenger: "Không rõ lỗi từ máy chủ Microsoft." };
 
+  // Bổ sung cả AADSTS40016 là lỗi lock/account bị khóa
   const isLock = [
-    "aadsts50076", "aadsts50079", "aadsts65001", "authorization denied",
+    "aadsts40016", "aadsts50076", "aadsts50079", "aadsts65001", "authorization denied",
     "aadsts70007", "aadsts54005", "invalid_grant", "locked", "disabled", "account is locked", "user account is locked"
   ].some(code => raw.includes(code));
 
@@ -577,6 +578,7 @@ export function dich_Loi_Microsoft(data: any): { status: "success" | "lock" | "f
 
 
 function traThongBao(raw: string): string {
+  if (raw.includes("aadsts40016")) return "Tài khoản Microsoft đã bị khóa, hãy đăng nhập web để xác minh và mở khóa.";
   if (raw.includes("aadsts70000")) return "Token không hợp lệ hoặc đã hết hạn.";
   if (raw.includes("aadsts70002")) return "Sai client_id hoặc client_secret.";
   if (raw.includes("aadsts70007")) return "Refresh token đã hết hạn.";
@@ -588,7 +590,7 @@ function traThongBao(raw: string): string {
   if (raw.includes("aadsts70020")) return "Request body không hợp lệ.";
   if (raw.includes("aadsts9002313")) return "Request thiếu hoặc sai tham số.";
   if (raw.includes("aadsts50076")) return "Yêu cầu xác thực hai bước (MFA).";
-  if (raw.includes("aadsts50079")) return "Tài khoản chưa hoàn tất xác minh bảo mật.";
+  if (raw.includes("aadsts50079")) return "Tài khoản chưa hoàn tất xác minh bảo mật hoặc bị khóa.";
   if (raw.includes("aadsts50126")) return "Sai tài khoản hoặc mật khẩu Outlook.";
   if (raw.includes("aadsts50133")) return "Access token không hợp lệ.";
   if (raw.includes("aadsts65001")) return "Tài khoản chưa cấp quyền cho ứng dụng.";
@@ -604,5 +606,7 @@ function traThongBao(raw: string): string {
   if (raw.includes("unauthorized")) return "Token hết hạn hoặc bị từ chối.";
   if (raw.includes("invalid_request")) return "Request không hợp lệ hoặc thiếu tham số.";
   if (raw.includes("bad request")) return "Yêu cầu không hợp lệ.";
+  if (raw.includes("locked") || raw.includes("disabled") || raw.includes("account is locked") || raw.includes("user account is locked"))
+    return "Tài khoản đã bị khóa do vi phạm chính sách của Microsoft.";
   return "❌ Lỗi không xác định từ Microsoft.";
 }
