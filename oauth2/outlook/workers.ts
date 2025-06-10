@@ -177,7 +177,8 @@ export async function xuLy_Token_Outlook(thamSo: any, env: any, ctx: ExecutionCo
       messenger: thongBao.messenger,
       email,
       pass,
-      time_token: thoiGian
+      time_token: thoiGian,
+      error: tokenData.error_description || tokenData.error?.message || tokenData.message || JSON.stringify(tokenData)
     };
 
     if (dungServer) {
@@ -301,7 +302,8 @@ export async function xuLy_Messenger_Outlook(thamSo: any, env: any, ctx: Executi
           refresh_token: tokenMoi,
           access_token: "",
           client_id: idClient,
-          time_token
+          time_token,
+          error: tokenData.error_description || tokenData.error?.message || tokenData.message || JSON.stringify(tokenData)
         }), { status: 200 });
       }
     }
@@ -353,7 +355,8 @@ export async function xuLy_Messenger_Outlook(thamSo: any, env: any, ctx: Executi
             refresh_token: tokenMoi,
             access_token: "",
             client_id: idClient,
-            time_token
+            time_token,
+            error: tokenData.error_description || tokenData.error?.message || tokenData.message || JSON.stringify(tokenData)
           }), { status: 200 });
         }
       }
@@ -406,7 +409,8 @@ export async function xuLy_Messenger_Outlook(thamSo: any, env: any, ctx: Executi
         refresh_token: tokenMoi,
         access_token: "",
         client_id: idClient,
-        time_token: thoiGian
+        time_token: thoiGian,
+        error: tokenData.error_description || tokenData.error?.message || tokenData.message || JSON.stringify(tokenData)
       }), { status: 200 });
     }
   }
