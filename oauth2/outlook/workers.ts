@@ -196,7 +196,7 @@ export async function xuLy_Token_Outlook(thamSo: any, env: any, ctx: ExecutionCo
         access_token: "",
         client_id: idClient,
         time_token: thoiGian,
-        status_token: thongBao.status
+        status: thongBao.status         // chỉ truyền status
       }, env));
     }
 
@@ -221,7 +221,7 @@ export async function xuLy_Token_Outlook(thamSo: any, env: any, ctx: ExecutionCo
       access_token: token,
       client_id: idClient,
       time_token: thoiGian,
-      status_token: "Live"
+      status: "success" 
     }, env));
   }
 
@@ -294,7 +294,6 @@ export async function xuLy_Messenger_Outlook(thamSo: any, env: any, ctx: Executi
   // 1. ƯU TIÊN TOKEN TRONG REQUEST
   if (!token) {
     if (tokenMoi && idClient) {
-      // Làm mới access_token từ refresh_token+client_id trong request
       const tokenRes = await lam_Moi_Token_Outlook({ refresh_token: tokenMoi, client_id: idClient }, env);
       const tokenData = await tokenRes.json();
       token = tokenData.access_token || "";
@@ -338,7 +337,6 @@ export async function xuLy_Messenger_Outlook(thamSo: any, env: any, ctx: Executi
       idClient = parsed.client_id || "";
       time_token = parsed.time_token || "";
 
-      // Kiểm tra TTL access_token: còn hiệu lực < 1H thì dùng luôn, quá hạn thì làm mới
       let validToken = false;
       if (token && time_token) {
         try {
@@ -347,7 +345,6 @@ export async function xuLy_Messenger_Outlook(thamSo: any, env: any, ctx: Executi
         } catch {}
       }
       if (!validToken && tokenMoi && idClient) {
-        // Token hết hạn, làm mới rồi ghi lại cache sau
         const tokenRes = await lam_Moi_Token_Outlook({ refresh_token: tokenMoi, client_id: idClient }, env);
         const tokenData = await tokenRes.json();
         token = tokenData.access_token || "";
@@ -368,7 +365,6 @@ export async function xuLy_Messenger_Outlook(thamSo: any, env: any, ctx: Executi
           }), { status: 200 });
         }
       }
-      // Nếu vẫn không có access_token hợp lệ
       if (!token) {
         return new Response(JSON.stringify({
           status: "fail",
@@ -396,7 +392,6 @@ export async function xuLy_Messenger_Outlook(thamSo: any, env: any, ctx: Executi
   let data = await docRes.json();
 
   if (isAccessTokenError(data) && tokenMoi && idClient && !tokenRefreshed) {
-    // Chỉ refresh 1 lần nếu lỗi xác thực
     tokenRefreshed = true;
     const tokenRes = await lam_Moi_Token_Outlook({ refresh_token: tokenMoi, client_id: idClient }, env);
     const tokenData = await tokenRes.json();
@@ -407,7 +402,6 @@ export async function xuLy_Messenger_Outlook(thamSo: any, env: any, ctx: Executi
       docRes = await doc_Mail_Outlook({ access_token: token, filterUnread: reading === "tick" }, env);
       data = await docRes.json();
     } else {
-      // Làm mới vẫn fail
       const thongBao = dich_Loi_Microsoft(tokenData);
       return new Response(JSON.stringify({
         status: thongBao.status,
@@ -423,7 +417,6 @@ export async function xuLy_Messenger_Outlook(thamSo: any, env: any, ctx: Executi
     }
   }
 
-  // Nếu vẫn lỗi sau khi thử refresh, trả lỗi rõ ràng
   if (data?.error || !docRes.ok) {
     const thongBao = dich_Loi_Microsoft(data);
     return new Response(JSON.stringify({
@@ -472,56 +465,38 @@ export async function xuLy_Messenger_Outlook(thamSo: any, env: any, ctx: Executi
   ketQuaPhanHoi.code = code;
 
   // 4. Cập nhật lại cache nếu có server: true (ghi lại record mới nhất)
-ctx.waitUntil((async () => {
-  if (dungServer) {
-    await luu_Email_KV_OUTLOOK(api_key, emailLC, {
-      pass,
-      refresh_token: tokenMoi,
-      access_token: token,
-      client_id: idClient,
-      time_token: thoiGian,
-      status_token: "Live"
-    }, env);
-  }
-  if (mailId && reading === "tick") {
-    // Delay 1-3 giây ngẫu nhiên (ví dụ)
-    await new Promise(r => setTimeout(r, 1000 + Math.floor(Math.random() * 2000)));
-    await fetch(`https://graph.microsoft.com/v1.0/me/messages/${mailId}`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ isRead: true })
-    });
-  }
-  if (mailId && reading === "delete") {
-    // Delay 1-3 giây ngẫu nhiên (nếu muốn)
-    await new Promise(r => setTimeout(r, 1000 + Math.floor(Math.random() * 2000)));
-    await fetch(`https://graph.microsoft.com/v1.0/me/messages/${mailId}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` }
-    });
-  }
-})());
+  ctx.waitUntil((async () => {
+    if (dungServer) {
+      await luu_Email_KV_OUTLOOK(api_key, emailLC, {
+        pass,
+        refresh_token: tokenMoi,
+        access_token: token,
+        client_id: idClient,
+        time_token: thoiGian,
+        status: code ? "success" : "fail"   // <-- Sửa đúng điều kiện, chuẩn xác!
+      }, env);
+    }
+    if (mailId && reading === "tick") {
+      await new Promise(r => setTimeout(r, 1000 + Math.floor(Math.random() * 2000)));
+      await fetch(`https://graph.microsoft.com/v1.0/me/messages/${mailId}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ isRead: true })
+      });
+    }
+    if (mailId && reading === "delete") {
+      await new Promise(r => setTimeout(r, 1000 + Math.floor(Math.random() * 2000)));
+      await fetch(`https://graph.microsoft.com/v1.0/me/messages/${mailId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    }
+  })());
 
   return new Response(JSON.stringify(ketQuaPhanHoi), { status: 200 });
-}
-
-// === Hàm phụ: Xác định lỗi access_token hết hạn hoặc invalid ===
-function isAccessTokenError(data: any): boolean {
-  // Dựa vào code lỗi chuẩn của Microsoft
-  const msg = (data?.error?.message || data?.error_description || data?.message || "").toLowerCase();
-  return (
-    msg.includes("access token") ||
-    msg.includes("expired") ||
-    msg.includes("invalid") ||
-    msg.includes("authentication") ||
-    msg.includes("unauthorized") ||
-    msg.includes("token has expired") ||
-    msg.includes("bearer") ||
-    (data?.error?.code && (data.error.code === "InvalidAuthenticationToken" || data.error.code === "InvalidToken"))
-  );
 }
 
 
