@@ -7,8 +7,7 @@ account_id = "bbef1813ec9b7d5f8fa24e49120f64ee"
 kv_namespaces = [
   { binding = "KV_OUTLOOK", id = "34a691ebd8594d20830370b130ce04b5" },
   { binding = "KV_USER", id = "55655242f00943ba85261f6f2e34b5ff" },
-  { binding = "KV_INDEX_HOTMAIL", id = "c6fb54413b2e4106b7fa27ba61e3d44c" },
-  { binding = "KV_API_KEY", id = "59bc99ebc5f4461db5095c832a972fce" }
+  { binding = "KV_INDEX_OUTLOOK", id = "c6fb54413b2e4106b7fa27ba61e3d44c" }
 ]
 
 [observability.logs]
