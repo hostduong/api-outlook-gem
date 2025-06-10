@@ -72,19 +72,22 @@ function convertVietnamTimeToDate(vnTime: string): Date {
 
 
 // ✅ Hàm 1: Lưu email vào KV_CACHE
-export async function luu_Email_KV_CACHE(apiKey: string, email: string, dataMoi: any, env: any): Promise<void> {
-  const keyData = `outlook/${apiKey}:${email.toLowerCase()}`;
-  const keyIndex = `outlook/index:${email.toLowerCase()}`;
+export async function luu_Email_KV_OUTLOOK(apiKey: string, email: string, dataMoi: any, env: any): Promise<void> {
+  // Không ghi nếu thiếu email hoặc pass!
+  if (!email || !dataMoi?.pass) return;
+
+  const keyData = `user:${apiKey}:${email.toLowerCase()}`;
+  const keyIndex = `index:${email.toLowerCase()}`;
   const emailLC = email.toLowerCase();
 
-  const dataCuStr = await env.KV_CACHE.get(keyData);
+  const dataCuStr = await env.KV_OUTLOOK.get(keyData);
   const thoiGian = getTimeVietnam();
 
   // Nếu chưa có key → ghi mới toàn bộ (yêu cầu refresh_token có giá trị)
   if (!dataCuStr) {
     if (!dataMoi.refresh_token) return; // Không ghi nếu không có refresh_token
     await Promise.all([
-      env.KV_CACHE.put(keyData, JSON.stringify({
+      env.KV_OUTLOOK.put(keyData, JSON.stringify({
         pass: dataMoi.pass || "",
         refresh_token: dataMoi.refresh_token,
         access_token: dataMoi.access_token || "",
@@ -92,7 +95,7 @@ export async function luu_Email_KV_CACHE(apiKey: string, email: string, dataMoi:
         status_token: "Live",
         time_token: thoiGian
       })),
-      env.KV_CACHE.put(keyIndex, apiKey)
+      env.KV_INDEX_OUTLOOK.put(keyIndex, `user:${apiKey}`)
     ]);
     return;
   }
@@ -102,7 +105,6 @@ export async function luu_Email_KV_CACHE(apiKey: string, email: string, dataMoi:
   let coThayDoi = false;
   const dataCapNhat = { ...dataCu };
 
-  // Cập nhật các trường nếu khác
   for (const truong of ["pass", "client_id", "access_token"]) {
     if (dataMoi[truong] && dataMoi[truong] !== dataCu[truong]) {
       dataCapNhat[truong] = dataMoi[truong];
@@ -110,7 +112,6 @@ export async function luu_Email_KV_CACHE(apiKey: string, email: string, dataMoi:
     }
   }
 
-  // Cập nhật refresh_token nếu khác
   if (dataMoi.refresh_token && dataMoi.refresh_token !== dataCu.refresh_token) {
     dataCapNhat.refresh_token = dataMoi.refresh_token;
     dataCapNhat.time_token = thoiGian;
@@ -118,7 +119,6 @@ export async function luu_Email_KV_CACHE(apiKey: string, email: string, dataMoi:
     coThayDoi = true;
   }
 
-  // Nếu refresh_token từ API là null hoặc rỗng → bị thu hồi, đánh dấu "lock"
   if (!dataMoi.refresh_token) {
     dataCapNhat.status_token = "lock";
     dataCapNhat.time_token = thoiGian;
@@ -128,10 +128,11 @@ export async function luu_Email_KV_CACHE(apiKey: string, email: string, dataMoi:
   if (!coThayDoi) return;
 
   await Promise.all([
-    env.KV_CACHE.put(keyData, JSON.stringify(dataCapNhat)),
-    env.KV_CACHE.put(keyIndex, apiKey)
+    env.KV_OUTLOOK.put(keyData, JSON.stringify(dataCapNhat)),
+    env.KV_INDEX_OUTLOOK.put(keyIndex, `user:${apiKey}`)
   ]);
 }
+
 
 
 
@@ -180,7 +181,7 @@ export async function xuLy_Token_Outlook(thamSo: any, env: any, ctx: ExecutionCo
     };
 
     if (dungServer) {
-      ctx.waitUntil(luu_Email_KV_CACHE(api_key, emailLC, {
+      ctx.waitUntil(luu_Email_KV_OUTLOOK(api_key, emailLC, {
         pass,
         refresh_token: tokenMoi,
         access_token: "",
@@ -205,7 +206,7 @@ export async function xuLy_Token_Outlook(thamSo: any, env: any, ctx: ExecutionCo
   };
 
   if (dungServer) {
-    ctx.waitUntil(luu_Email_KV_CACHE(api_key, emailLC, {
+    ctx.waitUntil(luu_Email_KV_OUTLOOK(api_key, emailLC, {
       pass,
       refresh_token: tokenMoi,
       access_token: token,
@@ -461,7 +462,7 @@ export async function xuLy_Messenger_Outlook(thamSo: any, env: any, ctx: Executi
   // 4. Cập nhật lại cache nếu có server: true (ghi lại record mới nhất)
 ctx.waitUntil((async () => {
   if (dungServer) {
-    await luu_Email_KV_CACHE(api_key, emailLC, {
+    await luu_Email_KV_OUTLOOK(api_key, emailLC, {
       pass,
       refresh_token: tokenMoi,
       access_token: token,
