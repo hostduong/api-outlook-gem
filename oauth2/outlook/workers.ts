@@ -73,25 +73,23 @@ function convertVietnamTimeToDate(vnTime: string): Date {
 
 // ✅ Hàm Lưu email vào KV_OUTLOOK
 export async function luu_Email_KV_OUTLOOK(apiKey: string, email: string, dataMoi: any, env: any): Promise<void> {
-  // Validate
   if (!apiKey || !email || !dataMoi?.pass) return;
 
   // Lấy email_user từ KV_USER
   const userDataStr = await env.KV_USER.get(`api_key:${apiKey}`);
-  if (!userDataStr) return; // Không tìm thấy api_key => không ghi
+  if (!userDataStr) return;
   let userData;
   try { userData = JSON.parse(userDataStr); } catch { return; }
   const emailUser = userData.email;
-  if (!emailUser) return; // Không có email_user => không ghi
+  if (!emailUser) return;
 
-  // Đúng format key
   const keyData = `user:${emailUser}:${email.toLowerCase()}`;
   const keyIndex = `index:${email.toLowerCase()}`;
-  const emailLC = email.toLowerCase();
   const thoiGian = getTimeVietnam();
 
-  // Nếu chưa có key => chỉ ghi nếu status === "success"
   const dataCuStr = await env.KV_OUTLOOK.get(keyData);
+
+  // Lưu mới
   if (!dataCuStr) {
     if (!dataMoi.refresh_token || dataMoi.status !== "success") return;
     await Promise.all([
@@ -108,7 +106,7 @@ export async function luu_Email_KV_OUTLOOK(apiKey: string, email: string, dataMo
     return;
   }
 
-  // Nếu đã có key => cập nhật như trước
+  // Update
   const dataCu = JSON.parse(dataCuStr);
   let coThayDoi = false;
   const dataCapNhat = { ...dataCu };
@@ -127,7 +125,8 @@ export async function luu_Email_KV_OUTLOOK(apiKey: string, email: string, dataMo
     coThayDoi = true;
   }
 
-  if (!dataMoi.refresh_token) {
+  // Xử lý status lock
+  if (dataMoi.status === "lock") {
     dataCapNhat.status_token = "lock";
     dataCapNhat.time_token = thoiGian;
     coThayDoi = true;
